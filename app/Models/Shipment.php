@@ -53,4 +53,23 @@ class Shipment extends Model
     {
         return $this->hasMany(AuditLog::class);
     }
+
+    // Auto-generate kode unik
+    public static function generateCode()
+    {
+        $romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+        $month = date('n'); // 1-12
+        $year = date('Y');
+
+        // Ambil urutan terakhir bulan ini
+        $lastShipment = self::whereYear('created_at', $year)
+            ->whereMonth('created_at', $month)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        $seq = $lastShipment ? (int)substr($lastShipment->code, -5) + 1 : 1;
+        $seq = str_pad($seq, 5, '0', STR_PAD_LEFT);
+
+        return "SJ/{$romanMonths[$month - 1]}/{$year}/{$seq}";
+    }
 }
