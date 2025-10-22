@@ -6,6 +6,7 @@ use App\Http\Controllers\DeliveryProofController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\FleetController;
+use App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -72,6 +73,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/fleets/{fleet}/edit', [FleetController::class, 'edit'])->name('fleets.edit');
     Route::put('/fleets/{fleet}', [FleetController::class, 'update'])->name('fleets.update');
     Route::delete('/fleets/{fleet}', [FleetController::class, 'destroy'])->name('fleets.destroy');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/audit-logs', [AuditController::class, 'index'])->name('audit.index');
 });
 
 Route::middleware(['auth'])->group(function () {});

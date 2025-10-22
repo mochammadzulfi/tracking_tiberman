@@ -46,6 +46,14 @@
                     </x-nav-link>
                 </div>
                 @endif
+
+                @if(Auth::user()->role === 'superuser')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('audit.index')" :active="request()->routeIs('audit.index')">
+                        {{ __('Audit Logs') }}
+                    </x-nav-link>
+                </div>
+                @endcan
             </div>
 
             <!-- Settings Dropdown -->
