@@ -8,14 +8,21 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 
 Route::get('/generate-storage-link', function () {
+    $target = storage_path('app/public');
+    $link = public_path('storage');
+
     try {
-        Artisan::call('storage:link');
-        return "Storage link berhasil dibuat!";
+        if (File::exists($link)) {
+            return "✅ Storage link sudah ada!";
+        }
+
+        File::link($target, $link);
+        return "✅ Storage link berhasil dibuat tanpa exec!";
     } catch (\Exception $e) {
-        return "Gagal membuat storage link: " . $e->getMessage();
+        return "❌ Gagal membuat storage link: " . $e->getMessage();
     }
 });
 
