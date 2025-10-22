@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Support\Facades\Storage;
 use App\Models\TrackingPoint;
+use App\Helpers\AuditHelper;
+use GeoIP;
 
 class ShipmentController extends Controller
 {
@@ -86,7 +88,7 @@ class ShipmentController extends Controller
     // Update shipment
     public function update(Request $request, Shipment $shipment)
     {
-        $request->validate([
+        $validated = $request->validate([
             'customer_name' => 'required|string|max:255',
             'origin_address' => 'required|string',
             'destination_address' => 'required|string',
@@ -98,19 +100,16 @@ class ShipmentController extends Controller
             'status' => 'required|in:draft,assigned,on_progress,delivered,cancelled'
         ]);
 
-        $shipment->update([
-            'customer_name' => $request->customer_name,
-            'origin_address' => $request->origin_address,
-            'destination_address' => $request->destination_address,
-            'weight' => $request->weight,
-            'volume' => $request->volume,
-            'scheduled_at' => $request->scheduled_at,
-            'assigned_fleet_id' => $request->assigned_fleet_id,
-            'assigned_driver_id' => $request->assigned_driver_id,
-            'status' => $request->status,
+        // Update shipment hanya sekali
+        $shipment->update($validated);
+
+        // Catat audit log, hanya field yang diupdate
+        AuditHelper::log($shipment->id, 'update_shipment', [
+            'changes' => $validated
         ]);
 
-        return redirect()->route('shipments.index')->with('success', 'Surat jalan berhasil diupdate.');
+        return redirect()->route('shipments.index')
+            ->with('success', 'Surat jalan berhasil diupdate.');
     }
 
     // Delete shipment
@@ -129,6 +128,14 @@ class ShipmentController extends Controller
 
         $driver = Auth::user();
 
+        // Ambil lokasi berdasarkan IP
+        $ipLocation = geoip($request->ip());
+
+        // Hitung jarak GPS vs IP (km)
+        $distance = $this->distance($request->lat, $request->lng, $ipLocation->lat, $ipLocation->lon);
+
+        $isMismatch = $distance > 50; // threshold 50 km
+
         $tracking = TrackingPoint::create([
             'shipment_id' => $shipment->id,
             'fleet_id' => $shipment->assigned_fleet_id,
@@ -137,13 +144,54 @@ class ShipmentController extends Controller
             'lng' => $request->lng,
             'source' => 'QR_SCAN',
             'ip_address' => $request->ip(),
-            'device_info' => json_encode($request->header()),
-            'is_ip_mismatch' => false,
+            'ip_geo' => json_encode($ipLocation),
+            'device_info' => json_encode([
+                'user_agent' => $request->header('User-Agent'),
+                'accept_language' => $request->header('Accept-Language'),
+            ]),
+            'is_ip_mismatch' => $isMismatch,
+            'created_at' => now(),
+        ]);
+
+        AuditHelper::log($shipment->id, 'scan_qr', [
+            'tracking_id' => $tracking->id,
+            'lat' => $request->lat,
+            'lng' => $request->lng,
+            'ip_address' => $request->ip(),
+            'distance_km' => $distance,
+            'is_ip_mismatch' => $isMismatch,
         ]);
 
         return response()->json([
-            'message' => 'Lokasi berhasil diupdate via scan QR',
-            'tracking' => $tracking
-        ]);
+            'message' => $isMismatch
+                ? 'Lokasi GPS tidak valid (dideteksi fake GPS)'
+                : 'Lokasi berhasil diupdate via scan QR',
+            'tracking' => $tracking,
+            'distance_km' => $distance,
+            'is_ip_mismatch' => $isMismatch
+        ], 200);
+    }
+
+    public function map()
+    {
+        // Ambil shipment + tracking point terakhir
+        $shipments = Shipment::with(['trackingPoints' => function ($q) {
+            $q->latest()->first();
+        }])->get();
+
+        return view('shipments.map', compact('shipments'));
+    }
+
+    function distance($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371; // km
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLng / 2) * sin($dLng / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
     }
 }
