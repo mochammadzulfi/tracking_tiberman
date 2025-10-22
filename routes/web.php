@@ -8,6 +8,16 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\FleetController;
 use App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
+
+Route::get('/generate-storage-link', function () {
+    try {
+        Artisan::call('storage:link');
+        return "Storage link berhasil dibuat!";
+    } catch (\Exception $e) {
+        return "Gagal membuat storage link: " . $e->getMessage();
+    }
+});
 
 // Dashboard
 Route::get('/', function () {
