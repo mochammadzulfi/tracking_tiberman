@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http; // <-- untuk HTTP request
 use App\Models\Shipment;
 use App\Models\Fleet;
 use App\Models\User;
@@ -149,17 +150,38 @@ class ShipmentController extends Controller
 
         $driver = Auth::user();
 
-        // GeoIP fallback tanpa cache tagging
+        // Dapatkan lokasi IP via ipinfo.io
+        $ip = $request->ip();
+        $ipLocation = null;
         try {
-            $ipLocation = geoip($request->ip());
+            $token = env('IPINFO_TOKEN'); // optional, kalau pakai token API
+            $url = $token
+                ? "https://ipinfo.io/{$ip}/json?token={$token}"
+                : "https://ipinfo.io/{$ip}/json";
+
+            $response = Http::get($url);
+            if ($response->ok()) {
+                $data = $response->json();
+                if (isset($data['loc'])) {
+                    [$latIp, $lngIp] = explode(',', $data['loc']);
+                    $ipLocation = [
+                        'lat' => (float) $latIp,
+                        'lng' => (float) $lngIp,
+                        'city' => $data['city'] ?? null,
+                        'region' => $data['region'] ?? null,
+                        'country' => $data['country'] ?? null,
+                        'ip' => $ip,
+                    ];
+                }
+            }
         } catch (\Exception $e) {
             $ipLocation = null;
         }
 
         // Cek fake GPS
         $isFake = false;
-        if ($ipLocation && $ipLocation->lat && $ipLocation->lon) {
-            $distance = $this->distance($request->lat, $request->lng, $ipLocation->lat, $ipLocation->lon);
+        if ($ipLocation && isset($ipLocation['lat'], $ipLocation['lng'])) {
+            $distance = $this->distance($request->lat, $request->lng, $ipLocation['lat'], $ipLocation['lng']);
             // Threshold: 5 km
             $isFake = $distance > 5;
         }
@@ -171,8 +193,8 @@ class ShipmentController extends Controller
             'lat' => $request->lat,
             'lng' => $request->lng,
             'source' => 'QR_SCAN',
-            'ip_address' => $request->ip(),
-            'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
+            'ip_address' => $ip,
+            'ip_geo' => $ipLocation,
             'device_info' => json_encode($request->header()),
             'is_ip_mismatch' => $isFake,
         ]);
@@ -181,13 +203,12 @@ class ShipmentController extends Controller
             'tracking_id' => $tracking->id,
             'lat' => $request->lat,
             'lng' => $request->lng,
-            'ip_address' => $request->ip(),
+            'ip_address' => $ip,
             'device_info' => $request->header(),
-            'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
+            'ip_geo' => $ipLocation,
             'is_ip_mismatch' => $isFake
         ]);
 
-        // Bisa kirim notif jika dicurigai fake GPS
         $message = $isFake
             ? 'Lokasi dicurigai tidak valid (Fake GPS). Silakan cek perangkat.'
             : 'Lokasi berhasil diupdate via scan QR';
