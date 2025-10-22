@@ -56,8 +56,9 @@
 
                     | <a href="{{ route('shipments.show.map', $shipment->id) }}" class="text-green-600">Lihat Peta</a>
 
+                    @if(auth()->user()->role != 'view_only')
                     | <a href="{{ route('proofs.create', $shipment->id) }}" class="text-grey-600">Delivery</a>
-
+                    @endif
                     <!-- Scan QR: admin & superuser
                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'superuser')
                     | <form action="{{ route('shipments.scan', $shipment->id) }}" method="POST" class="inline-block">
@@ -65,11 +66,6 @@
                         <button type="submit" class="text-green-600">Scan QR</button>
                     </form>
                     @endif -->
-
-                    <!-- View only -->
-                    @if(auth()->user()->role == 'view_only')
-                    <span class="text-gray-500">Hanya bisa melihat</span>
-                    @endif
 
                 </td>
             </tr>

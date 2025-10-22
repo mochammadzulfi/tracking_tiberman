@@ -16,6 +16,7 @@
     @endif
 
     <!-- Scan Lokasi -->
+    @if(auth()->user()->role != 'view_only')
     <h3 class="mt-4 font-bold">Scan Lokasi</h3>
     <form id="scanForm">
         @csrf
@@ -23,6 +24,7 @@
         <input type="hidden" name="lng" id="lng">
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Scan & Update Lokasi</button>
     </form>
+    @endif
 
     <h3 class="mt-6 font-bold">Bukti Serah Terima</h3>
     @if($shipment->deliveryProofs->count())
