@@ -153,7 +153,7 @@ class ShipmentController extends Controller
         // Dapatkan lokasi IP via ipinfo.io
         $ip = $request->ip();
         $ipLocation = null;
-        try {
+        /*try {
             $token = env('IPINFO_TOKEN'); // optional, kalau pakai token API
             $url = $token
                 ? "https://ipinfo.io/{$ip}/json?token={$token}"
@@ -176,7 +176,7 @@ class ShipmentController extends Controller
             }
         } catch (\Exception $e) {
             $ipLocation = null;
-        }
+        }*/
 
         // Cek fake GPS
         $isFake = false;
