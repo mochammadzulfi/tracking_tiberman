@@ -2,12 +2,13 @@
 
 @section('content')
 <div class="container mx-auto p-4">
-    <h2 class="text-xl font-bold mb-4">Daftar Surat Jalan</h2>
-
-    <!-- Tombol Buat Surat Jalan: hanya creator & superuser -->
-    @if(auth()->user()->role == 'creator' || auth()->user()->role == 'superuser')
-    <a href="{{ route('shipments.create') }}" class="bg-blue-500 text-white px-4 py-2 rounded mb-4 inline-block">Buat Surat Jalan Baru</a>
-    @endif
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Daftar Surat Jalan</h2>
+        <!-- Tombol Buat Surat Jalan: hanya creator & superuser -->
+        @if(auth()->user()->role == 'creator' || auth()->user()->role == 'superuser')
+        <a href="{{ route('shipments.create') }}" class="bg-blue-500 text-white px-4 py-2 rounded mb-4 inline-block">Buat Surat Jalan Baru</a>
+        @endif
+    </div>
 
     @if(session('success'))
     <div class="mb-4 p-3 bg-green-100 text-green-700 rounded">
@@ -53,13 +54,15 @@
                     </form>
                     @endif
 
-                    <!-- Scan QR: admin & superuser -->
+                    | <a href="{{ route('shipments.show.map', $shipment->id) }}" class="text-green-600">Lihat Peta</a>
+
+                    <!-- Scan QR: admin & superuser
                     @if(auth()->user()->role == 'admin' || auth()->user()->role == 'superuser')
                     | <form action="{{ route('shipments.scan', $shipment->id) }}" method="POST" class="inline-block">
                         @csrf
                         <button type="submit" class="text-green-600">Scan QR</button>
                     </form>
-                    @endif
+                    @endif -->
 
                     <!-- View only -->
                     @if(auth()->user()->role == 'view_only')

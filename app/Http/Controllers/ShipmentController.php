@@ -7,11 +7,13 @@ use App\Models\Shipment;
 use App\Models\Fleet;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use Illuminate\Support\Facades\Storage;
 use App\Models\TrackingPoint;
 use App\Helpers\AuditHelper;
 use GeoIP;
+
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class ShipmentController extends Controller
 {
@@ -26,7 +28,7 @@ class ShipmentController extends Controller
     public function create()
     {
         $fleets = Fleet::all();
-        $drivers = User::whereIn('role', ['creator', 'admin'])->get();
+        $drivers = User::whereIn('role', ['driver'])->get();
         return view('shipments.create', compact('fleets', 'drivers'));
     }
 
@@ -60,12 +62,23 @@ class ShipmentController extends Controller
             'status' => 'draft',
         ]);
 
-        // Generate QR Code
-        $qrPath = 'qrcodes/' . $shipment->id . '.png';
-        Storage::disk('public')->put($qrPath, QrCode::format('png')->size(300)->generate(route('shipments.show', $shipment->id)));
+        $shipmentCode = $shipment->code;
 
-        // Simpan path QR ke shipment
-        $shipment->update(['barcode_data' => $qrPath]);
+        // Encode kode untuk URL
+        $encoded = urlencode($shipmentCode);
+
+        // Gunakan API gratis seperti goqr.me
+        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={$encoded}";
+
+        // Simpan URL ke database
+        $shipment->update([
+            'barcode_data' => $qrUrl,
+        ]);
+
+        // Catat audit log, hanya field yang diupdate
+        AuditHelper::log($shipment->id, 'create_shipment', [
+            'changes' => $shipment
+        ]);
 
         return redirect()->route('shipments.index')->with('success', 'Surat jalan berhasil dibuat dengan QR Code.');
     }
@@ -81,7 +94,7 @@ class ShipmentController extends Controller
     public function edit(Shipment $shipment)
     {
         $fleets = Fleet::all();
-        $drivers = User::whereIn('role', ['creator', 'admin'])->get();
+        $drivers = User::whereIn('role', ['driver'])->get();
         return view('shipments.edit', compact('shipment', 'fleets', 'drivers'));
     }
 
@@ -128,13 +141,12 @@ class ShipmentController extends Controller
 
         $driver = Auth::user();
 
-        // Ambil lokasi berdasarkan IP
-        $ipLocation = geoip($request->ip());
-
-        // Hitung jarak GPS vs IP (km)
-        $distance = $this->distance($request->lat, $request->lng, $ipLocation->lat, $ipLocation->lon);
-
-        $isMismatch = $distance > 50; // threshold 50 km
+        // GeoIP fallback tanpa cache tagging
+        try {
+            $ipLocation = GeoIP()->getLocation($request->ip());
+        } catch (\Exception $e) {
+            $ipLocation = null; // jika gagal, tetap lanjut
+        }
 
         $tracking = TrackingPoint::create([
             'shipment_id' => $shipment->id,
@@ -144,13 +156,9 @@ class ShipmentController extends Controller
             'lng' => $request->lng,
             'source' => 'QR_SCAN',
             'ip_address' => $request->ip(),
-            'ip_geo' => json_encode($ipLocation),
-            'device_info' => json_encode([
-                'user_agent' => $request->header('User-Agent'),
-                'accept_language' => $request->header('Accept-Language'),
-            ]),
-            'is_ip_mismatch' => $isMismatch,
-            'created_at' => now(),
+            'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
+            'device_info' => json_encode($request->header()),
+            'is_ip_mismatch' => false,
         ]);
 
         AuditHelper::log($shipment->id, 'scan_qr', [
@@ -158,28 +166,22 @@ class ShipmentController extends Controller
             'lat' => $request->lat,
             'lng' => $request->lng,
             'ip_address' => $request->ip(),
-            'distance_km' => $distance,
-            'is_ip_mismatch' => $isMismatch,
+            'device_info' => $request->header(),
+            'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
         ]);
 
         return response()->json([
-            'message' => $isMismatch
-                ? 'Lokasi GPS tidak valid (dideteksi fake GPS)'
-                : 'Lokasi berhasil diupdate via scan QR',
-            'tracking' => $tracking,
-            'distance_km' => $distance,
-            'is_ip_mismatch' => $isMismatch
-        ], 200);
+            'message' => 'Lokasi berhasil diupdate via scan QR',
+            'tracking' => $tracking
+        ]);
     }
 
-    public function map()
+    public function showMap(Shipment $shipment)
     {
-        // Ambil shipment + tracking point terakhir
-        $shipments = Shipment::with(['trackingPoints' => function ($q) {
-            $q->latest()->first();
-        }])->get();
+        // Load tracking points, fleet, driver
+        $shipment->load('trackingPoints', 'fleet', 'driver');
 
-        return view('shipments.map', compact('shipments'));
+        return view('shipments.map_single', compact('shipment'));
     }
 
     function distance($lat1, $lng1, $lat2, $lng2)

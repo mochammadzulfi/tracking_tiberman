@@ -24,6 +24,10 @@ class Shipment extends Model
         'created_by_user_id'
     ];
 
+    protected $casts = [
+        'scheduled_at' => 'datetime',
+    ];
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by_user_id');

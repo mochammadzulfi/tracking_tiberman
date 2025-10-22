@@ -16,11 +16,36 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
                 </div>
+
+                @if(in_array(Auth::user()->role, ['creator', 'superuser']))
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('fleets.index')" :active="request()->routeIs('fleets.*')">
+                        {{ __('Fleets') }}
+                    </x-nav-link>
+                </div>
+                @endif
+
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('shipments.index')" :active="request()->routeIs('shipments.index')">
                         {{ __('Shipments') }}
                     </x-nav-link>
                 </div>
+
+                @if(auth()->user()->role == 'superuser')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('groups.index')" :active="request()->routeIs('groups.*')">
+                        {{ __('Groups') }}
+                    </x-nav-link>
+                </div>
+                @endif
+
+                @if(Auth::user()->role === 'superuser')
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                        {{ __('Users') }}
+                    </x-nav-link>
+                </div>
+                @endif
             </div>
 
             <!-- Settings Dropdown -->
@@ -75,6 +100,19 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('shipments.index')" :active="request()->routeIs('shipments.index')">
+                {{ __('Shipments') }}
+            </x-responsive-nav-link>
+            @if(auth()->user()->role == 'superuser')
+            <x-responsive-nav-link :href="route('groups.index')" :active="request()->routeIs('groups.*')">
+                {{ __('Groups') }}
+            </x-responsive-nav-link>
+            @endif
+            @if(auth()->user()->role == 'superuser')
+            <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                {{ __('Users') }}
+            </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

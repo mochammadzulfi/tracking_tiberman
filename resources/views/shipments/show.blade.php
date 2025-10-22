@@ -12,27 +12,57 @@
     <!-- QR Code -->
     <h3 class="mt-4 font-bold">QR Code</h3>
     @if($shipment->barcode_data)
-    <img src="{{ asset('storage/'.$shipment->barcode_data) }}" alt="QR Code" class="border p-2 rounded">
+    <img src="{{ $shipment->barcode_data }}" alt="QR Code" class="border p-2 rounded">
     @endif
 
-    <!-- Scan Lokasi: hanya admin & superuser -->
-    @if(auth()->user()->role == 'admin' || auth()->user()->role == 'superuser')
+    <!-- Scan Lokasi -->
     <h3 class="mt-4 font-bold">Scan Lokasi</h3>
-    <form action="{{ route('shipments.scan', $shipment->id) }}" method="POST" id="scanForm">
+    <form id="scanForm">
         @csrf
         <input type="hidden" name="lat" id="lat">
         <input type="hidden" name="lng" id="lng">
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Scan & Update Lokasi</button>
     </form>
-    @else
-    <p class="text-gray-500 mt-4">Hanya admin atau superuser yang dapat melakukan scan lokasi.</p>
-    @endif
 </div>
 
 <script>
-    navigator.geolocation.getCurrentPosition(function(position) {
-        document.getElementById('lat').value = position.coords.latitude;
-        document.getElementById('lng').value = position.coords.longitude;
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('scanForm');
+
+        // Ambil posisi GPS
+        navigator.geolocation.getCurrentPosition(function(position) {
+            document.getElementById('lat').value = position.coords.latitude;
+            document.getElementById('lng').value = position.coords.longitude;
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const lat = document.getElementById('lat').value;
+            const lng = document.getElementById('lng').value;
+            const token = form.querySelector('input[name="_token"]').value;
+
+            fetch("{{ route('shipments.scan', $shipment->id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        lat: lat,
+                        lng: lng
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message); // <-- Notifikasi sukses
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Gagal update lokasi');
+                });
+        });
     });
 </script>
 @endsection
