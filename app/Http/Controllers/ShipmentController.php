@@ -150,35 +150,34 @@ class ShipmentController extends Controller
 
         $driver = Auth::user();
 
-        // Dapatkan lokasi IP via ipinfo.io
         $ip = $request->ip();
         $ipLocation = null;
-        /*try {
-            $token = env('IPINFO_TOKEN'); // optional, kalau pakai token API
-            $url = $token
-                ? "https://ipinfo.io/{$ip}/json?token={$token}"
-                : "https://ipinfo.io/{$ip}/json";
+
+        try {
+            // Gunakan GeoAPI
+            $apiKey = env('GEOAPIFY_KEY');
+            $url = "https://api.geoapify.com/v1/ipinfo?apiKey={$apiKey}&ip={$ip}";
 
             $response = Http::get($url);
+
             if ($response->ok()) {
                 $data = $response->json();
-                if (isset($data['loc'])) {
-                    [$latIp, $lngIp] = explode(',', $data['loc']);
+                if (isset($data['location']['latitude']) && isset($data['location']['longitude'])) {
                     $ipLocation = [
-                        'lat' => (float) $latIp,
-                        'lng' => (float) $lngIp,
-                        'city' => $data['city'] ?? null,
-                        'region' => $data['region'] ?? null,
-                        'country' => $data['country'] ?? null,
+                        'lat' => (float) $data['location']['latitude'],
+                        'lng' => (float) $data['location']['longitude'],
+                        'city' => $data['city']['name'] ?? null,
+                        'region' => $data['state']['name'] ?? null,
+                        'country' => $data['country']['name'] ?? null,
                         'ip' => $ip,
                     ];
                 }
             }
         } catch (\Exception $e) {
             $ipLocation = null;
-        }*/
+        }
 
-        // Cek fake GPS
+        // Cek fake GPS berdasarkan jarak antara GPS device dan lokasi IP
         $isFake = false;
         if ($ipLocation && isset($ipLocation['lat'], $ipLocation['lng'])) {
             $distance = $this->distance($request->lat, $request->lng, $ipLocation['lat'], $ipLocation['lng']);
