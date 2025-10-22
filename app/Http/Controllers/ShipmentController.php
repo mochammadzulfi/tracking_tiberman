@@ -151,9 +151,17 @@ class ShipmentController extends Controller
 
         // GeoIP fallback tanpa cache tagging
         try {
-            $ipLocation = GeoIP()->getLocation($request->ip());
+            $ipLocation = geoip($request->ip());
         } catch (\Exception $e) {
-            $ipLocation = null; // jika gagal, tetap lanjut
+            $ipLocation = null;
+        }
+
+        // Cek fake GPS
+        $isFake = false;
+        if ($ipLocation && $ipLocation->lat && $ipLocation->lon) {
+            $distance = $this->distance($request->lat, $request->lng, $ipLocation->lat, $ipLocation->lon);
+            // Threshold: 5 km
+            $isFake = $distance > 5;
         }
 
         $tracking = TrackingPoint::create([
@@ -166,7 +174,7 @@ class ShipmentController extends Controller
             'ip_address' => $request->ip(),
             'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
             'device_info' => json_encode($request->header()),
-            'is_ip_mismatch' => false,
+            'is_ip_mismatch' => $isFake,
         ]);
 
         AuditHelper::log($shipment->id, 'scan_qr', [
@@ -176,15 +184,24 @@ class ShipmentController extends Controller
             'ip_address' => $request->ip(),
             'device_info' => $request->header(),
             'ip_geo' => $ipLocation ? $ipLocation->toArray() : null,
+            'is_ip_mismatch' => $isFake
         ]);
 
+        // Bisa kirim notif jika dicurigai fake GPS
+        $message = $isFake
+            ? 'Lokasi dicurigai tidak valid (Fake GPS). Silakan cek perangkat.'
+            : 'Lokasi berhasil diupdate via scan QR';
+
         return response()->json([
-            'message' => 'Lokasi berhasil diupdate via scan QR',
+            'message' => $message,
             'tracking' => $tracking
         ]);
     }
 
-    function distance($lat1, $lng1, $lat2, $lng2)
+    /**
+     * Hitung jarak antara dua koordinat (Haversine formula)
+     */
+    private function distance($lat1, $lng1, $lat2, $lng2)
     {
         $earthRadius = 6371; // km
         $dLat = deg2rad($lat2 - $lat1);
