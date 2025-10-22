@@ -10,22 +10,6 @@ use App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\File;
 
-Route::get('/generate-storage-link', function () {
-    $target = storage_path('app/public');
-    $link = public_path('storage');
-
-    try {
-        if (File::exists($link)) {
-            return "✅ Storage link sudah ada!";
-        }
-
-        File::link($target, $link);
-        return "✅ Storage link berhasil dibuat tanpa exec!";
-    } catch (\Exception $e) {
-        return "❌ Gagal membuat storage link: " . $e->getMessage();
-    }
-});
-
 // Dashboard
 Route::get('/', function () {
     return view('dashboard');
