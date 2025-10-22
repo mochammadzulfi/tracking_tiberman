@@ -24,11 +24,8 @@ class DeliveryProofController extends Controller
             'received_at' => 'required|date',
         ]);
 
-        // --- Upload foto ke public storage (shared hosting) ---
-        $photo = $request->file('photo');
-        $fileName = 'delivery_' . time() . '_' . $photo->getClientOriginalName();
-        // akan tersimpan di public_html/storage/delivery_proofs/
-        $photoPath = $photo->storeAs('delivery_proofs', $fileName, 'public');
+        // Upload foto
+        $photoPath = $request->file('photo')->store('delivery_proofs', 'public');
 
         // Simpan ke DB
         DeliveryProof::create([
