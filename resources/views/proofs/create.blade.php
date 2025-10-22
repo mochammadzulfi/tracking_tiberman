@@ -25,7 +25,7 @@
             @error('received_at') <span class="text-red-500">{{ $message }}</span> @enderror
         </div>
 
-        <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Upload Bukti</button>
+        <button type="submit" class="bg-blue-500 text-white font-bold px-4 py-2 rounded">Upload Bukti</button>
     </form>
 </div>
 @endsection

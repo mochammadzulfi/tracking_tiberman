@@ -23,6 +23,19 @@
         <input type="hidden" name="lng" id="lng">
         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Scan & Update Lokasi</button>
     </form>
+
+    <h3 class="mt-6 font-bold">Bukti Serah Terima</h3>
+    @if($shipment->deliveryProofs->count())
+    <ul>
+        @foreach($shipment->deliveryProofs as $proof)
+        <li>
+            <a href="{{ asset('storage/' . $proof->photo_path) }}" target="_blank">Lihat Bukti #{{ $loop->iteration }}</a>
+        </li>
+        @endforeach
+    </ul>
+    @else
+    <p>Belum ada bukti serah terima.</p>
+    @endif
 </div>
 
 <script>

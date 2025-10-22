@@ -132,6 +132,14 @@ class ShipmentController extends Controller
         return redirect()->route('shipments.index')->with('success', 'Surat jalan berhasil dihapus.');
     }
 
+    public function showMap(Shipment $shipment)
+    {
+        // Load tracking points, fleet, driver
+        $shipment->load('trackingPoints', 'fleet', 'driver');
+
+        return view('shipments.map_single', compact('shipment'));
+    }
+
     public function scan(Request $request, Shipment $shipment)
     {
         $request->validate([
@@ -174,14 +182,6 @@ class ShipmentController extends Controller
             'message' => 'Lokasi berhasil diupdate via scan QR',
             'tracking' => $tracking
         ]);
-    }
-
-    public function showMap(Shipment $shipment)
-    {
-        // Load tracking points, fleet, driver
-        $shipment->load('trackingPoints', 'fleet', 'driver');
-
-        return view('shipments.map_single', compact('shipment'));
     }
 
     function distance($lat1, $lng1, $lat2, $lng2)
