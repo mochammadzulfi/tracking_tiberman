@@ -31,7 +31,7 @@
     <ul>
         @foreach($shipment->deliveryProofs as $proof)
         <li>
-            <a href="{{ asset('storage/' . $proof->photo_path) }}" target="_blank">Lihat Bukti #{{ $loop->iteration }}</a>
+            <a href="{{ asset($proof->photo_path) }}" target="_blank">Lihat Bukti #{{ $loop->iteration }}</a>
         </li>
         @endforeach
     </ul>

@@ -24,10 +24,23 @@ class DeliveryProofController extends Controller
             'received_at' => 'required|date',
         ]);
 
-        // Upload foto
-        $photoPath = $request->file('photo')->store('delivery_proofs', 'public');
+        // ===== Upload langsung ke public/delivery_proofs =====
+        $file = $request->file('photo');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $uploadPath = public_path('delivery_proofs');
 
-        // Simpan ke DB
+        // Pastikan folder ada
+        if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+
+        // Pindahkan file ke folder public/delivery_proofs
+        $file->move($uploadPath, $filename);
+
+        // Simpan path relatif untuk ditampilkan (bisa diakses via URL)
+        $photoPath = 'delivery_proofs/' . $filename;
+
+        // ===== Simpan ke database =====
         DeliveryProof::create([
             'shipment_id' => $shipment->id,
             'photo_path' => $photoPath,
@@ -37,12 +50,13 @@ class DeliveryProofController extends Controller
             'created_at' => now(),
         ]);
 
+        // ===== Audit log =====
         AuditHelper::log($shipment->id, 'upload_delivery_proof', [
             'receiver_name' => $request->receiver_name,
             'photo_path' => $photoPath
         ]);
 
-        // Update status shipment jadi delivered
+        // ===== Update status shipment =====
         $shipment->update(['status' => 'delivered']);
 
         return redirect()->route('shipments.show', $shipment->id)
