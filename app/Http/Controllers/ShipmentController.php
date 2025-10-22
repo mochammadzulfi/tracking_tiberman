@@ -181,8 +181,8 @@ class ShipmentController extends Controller
         $isFake = false;
         if ($ipLocation && isset($ipLocation['lat'], $ipLocation['lng'])) {
             $distance = $this->distance($request->lat, $request->lng, $ipLocation['lat'], $ipLocation['lng']);
-            // Threshold: 5 km
-            $isFake = $distance > 5;
+            // Threshold: 30 km
+            $isFake = $distance > 30;
         }
 
         $tracking = TrackingPoint::create([
