@@ -159,7 +159,6 @@ class ShipmentController extends Controller
             $url = "https://api.geoapify.com/v1/ipinfo?apiKey={$apiKey}&ip={$ip}";
 
             $response = Http::get($url);
-
             if ($response->ok()) {
                 $data = $response->json();
                 if (isset($data['location']['latitude']) && isset($data['location']['longitude'])) {
@@ -181,8 +180,8 @@ class ShipmentController extends Controller
         $isFake = false;
         if ($ipLocation && isset($ipLocation['lat'], $ipLocation['lng'])) {
             $distance = $this->distance($request->lat, $request->lng, $ipLocation['lat'], $ipLocation['lng']);
-            // Threshold: 30 km
-            $isFake = $distance > 30;
+            // Threshold: 150 km
+            $isFake = $distance > 150;
         }
 
         $tracking = TrackingPoint::create([
